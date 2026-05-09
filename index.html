@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>欧</title>
+  <link rel="icon" type="image/png" href="face.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #faf7f2;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 16px 24px;
+      background: #fff;
+      border-bottom: 1px solid #ece8e0;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      z-index: 1000;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      color: #1a1a1a;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #aaa;
+      font-style: italic;
+      flex: 1;
+    }
+
+    #random-btn {
+      font-family: 'Georgia', serif;
+      font-size: 0.95rem;
+      background: #2c2c2c;
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #random-btn:hover { background: #5a7d5a; }
+
+    #map {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* Custom marker pin */
+    .pin {
+      width: 32px;
+      height: 32px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 3px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      background: #2c2c2c;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+.pin-label {
+      position: absolute;
+      bottom: 38px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2c2c2c;
+      color: #fff;
+      font-family: sans-serif;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      padding: 4px 9px;
+      border-radius: 6px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .pin-wrapper { overflow: visible !important; position: relative; }
+    .pin-wrapper:hover .pin-label { opacity: 1; }
+    .pin-wrapper:hover .pin { background: #5a7d5a; transform: rotate(-45deg) scale(1.1); }
+
+    .pin.active {
+      background: #5a7d5a;
+      transform: rotate(-45deg) scale(1.2);
+    }
+
+    /* Modal overlay */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    #overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 400px;
+      max-width: calc(100vw - 48px);
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+      font-family: 'Georgia', serif;
+      position: relative;
+    }
+
+    #close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.15);
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3;
+      transition: background 0.15s;
+    }
+
+    #close-btn:hover { background: rgba(0,0,0,0.35); }
+
+    /* Photo gallery */
+    .popup-gallery {
+      position: relative;
+      width: 100%;
+      height: 360px;
+      background: #111;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .popup-gallery img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .popup-gallery img.active { opacity: 1; }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      transition: background 0.15s;
+    }
+
+    .gallery-nav:hover { background: rgba(0,0,0,0.6); }
+    .gallery-nav.prev { left: 8px; }
+    .gallery-nav.next { right: 8px; }
+
+    .gallery-dots {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 5px;
+      z-index: 2;
+    }
+
+    .gdot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.45);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .gdot.active { background: #fff; }
+
+    /* Card body */
+    .popup-body {
+      padding: 18px 20px 20px;
+    }
+
+    .popup-name {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+
+    .popup-tag {
+      display: inline-block;
+      background: #f0ebe2;
+      color: #7a5c3a;
+      font-size: 0.72rem;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-family: sans-serif;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+
+    .popup-meta {
+      font-family: sans-serif;
+      font-size: 0.8rem;
+      color: #666;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .popup-meta span { display: flex; align-items: flex-start; gap: 6px; }
+
+    hr.pdivider {
+      border: none;
+      border-top: 1px solid #f0ede8;
+      margin: 10px 0;
+    }
+
+    .popup-label {
+      font-family: sans-serif;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #bbb;
+      margin-bottom: 5px;
+    }
+
+    .popup-review {
+      font-size: 0.88rem;
+      color: #555;
+      line-height: 1.6;
+      font-style: italic;
+      margin-bottom: 12px;
+    }
+
+    .popup-maps {
+      font-family: sans-serif;
+      font-size: 0.78rem;
+      color: #4a7c59;
+      text-decoration: none;
+      border-bottom: 1px solid #b2cfbb;
+    }
+
+    .popup-maps:hover { color: #2d5c3a; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>谢谢您，欧老师</h1>
+    <p>我对普林斯顿东亚餐厅的评论</p>
+    <button id="random-btn" onclick="openRandom()">随便</button>
+  </header>
+  <div id="map"></div>
+  <div id="overlay">
+    <div id="modal">
+      <button id="close-btn" onclick="closeModal()">✕</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const restaurants = [
+      {
+        name: "Amazing Thai",
+        cuisine: "Thai",
+        address: "260 Nassau St",
+        rating: "3.5 ★",
+        hours: "Mon 4:30–9pm · Tue–Thu 12–3pm, 4:30–9pm\nFri–Sat 12–3pm, 4:30–10pm · Sun 4:30–9:30pm",
+        review: "档次比 Thai Village 高一些,但跟纽约的泰国菜比就很普通了。",
+        maps: "https://maps.google.com/?q=Amazing+Thai+260+Nassau+St+Princeton+NJ",
+        lat: 40.35249, lng: -74.65082,
+        photos: [
+          "restaurantpics/amazingthai/Screen Shot 2026-05-09 at 3.18.00 PM.png",
+          "restaurantpics/amazingthai/Screen Shot 2026-05-09 at 3.18.12 PM.png",
+          "restaurantpics/amazingthai/Screen Shot 2026-05-09 at 3.18.16 PM.png",
+        ]
+      },
+      {
+        name: "Ajiten Ramen",
+        cuisine: "Japanese · Ramen",
+        address: "11 Chambers St",
+        rating: "N/A",
+        hours: "Mon–Fri 11:30am–3pm, 4–9pm · Fri–Sat until 10pm",
+        review: "店在地下室,氛围很日式。这一带最好吃的拉面是 Princeton Junction 的 Terakawa Ramen,不过 Ajiten 也还能吃。",
+        maps: "https://maps.google.com/?q=Ajiten+Ramen+Princeton+NJ",
+        lat: 40.34959, lng: -74.66248,
+        photos: [
+          "restaurantpics/ani/Screen Shot 2026-05-09 at 3.19.12 PM.png",
+        ]
+      },
+      {
+        name: "Xibei 西北",
+        cuisine: "Northwestern Chinese",
+        address: "43 Witherspoon St",
+        rating: "4.2 ★",
+        hours: "Mon Closed · Tue–Thu 11am–9pm\nFri–Sat 11am–9:30pm · Sun 11am–9pm",
+        review: "我去的时候离他们开业没多久,情况现在可能有变化。他们的牛肉面我自己几分钟就能煮出来,汤头也没什么味道。羊肉串倒是很赞,虽然价格偏贵。肉夹馍是我最爱的食物,但他们家做的也就一般般。",
+        maps: "https://maps.google.com/?q=Xibei+Cuisine+43+Witherspoon+St+Princeton+NJ",
+        lat: 40.35104, lng: -74.66022,
+        photos: [
+          "restaurantpics/xibei/Screen Shot 2026-05-09 at 3.20.23 PM.png",
+          "restaurantpics/xibei/Screen Shot 2026-05-09 at 3.20.25 PM.png",
+          "restaurantpics/xibei/Screen Shot 2026-05-09 at 3.20.28 PM.png",
+        ]
+      },
+      {
+        name: "FreshO",
+        cuisine: "Poke · Healthy Bowls",
+        address: "142 Nassau St",
+        rating: "N/A",
+        hours: "Daily 10am–9pm",
+        review: "价格相对偏贵,但我特别喜欢他们家宽面的弹性。肉夹馍的馍从以前的面包感变成了酥脆的口感,说实话我更喜欢以前的那种(我知道这是小众意见)。饺子很弹很多汁,不过有一次偏咸了。总体来说,很喜欢这家家庭经营的小店,店里放着中文歌,氛围很舒服。",
+        maps: "https://maps.google.com/?q=FreshO+Princeton+NJ",
+        lat: 40.35231, lng: -74.65181,
+        photos: [
+          "restaurantpics/fresho/Screen Shot 2026-05-09 at 3.19.57 PM.png",
+          "restaurantpics/fresho/Screen Shot 2026-05-09 at 3.20.00 PM.png",
+          "restaurantpics/fresho/Screen Shot 2026-05-09 at 3.20.03 PM.png",
+        ]
+      },
+      {
+        name: "Sichuan House",
+        cuisine: "Sichuan Chinese",
+        address: "238 Nassau St",
+        rating: "N/A",
+        hours: "Mon–Thu 11am–9pm · Fri–Sat 11am–9:30pm · Sun 11am–9pm",
+        review: "欧老师,我知道您是四川人,所以我的评价您就别太认真看了。我觉得他们的菜稍微有点油,不过跟普林斯顿其他几家中餐馆比起来,真的没什么好挑剔的。我特别爱夫妻肺片,还有他们家的干锅花菜和干锅包菜。这家餐厅在很多普林斯顿中国学生的心里,永远都有一个特别的位置。",
+        maps: "https://maps.google.com/?q=Sichuan+House+238+Nassau+St+Princeton+NJ",
+        lat: 40.35214, lng: -74.65219,
+        photos: [
+          "restaurantpics/schouse/Screen Shot 2026-05-09 at 3.18.42 PM.png",
+          "restaurantpics/schouse/Screen Shot 2026-05-09 at 3.18.45 PM.png",
+          "restaurantpics/schouse/Screen Shot 2026-05-09 at 3.18.50 PM.png",
+        ]
+      },
+      {
+        name: "Lan Ramen",
+        cuisine: "Lanzhou Noodles",
+        address: "4 Hulfish St",
+        rating: "4.5 ★",
+        hours: "Mon–Thu 11:15am–9:45pm · Fri–Sat 11am–10pm · Sun 11am–9:30pm",
+        review: "我第一个想法就是:为什么要在兰州牛肉面上放那么一大堆菠菜?除此之外,他们手工拉面这一点确实挺有意思的。不过那些菠菜真的让我有点无法接受,所以我已经很久没去了。",
+        maps: "https://maps.google.com/?q=Lan+Ramen+4+Hulfish+St+Princeton+NJ",
+        lat: 40.35119, lng: -74.66072,
+        photos: [
+          "restaurantpics/lan/Screen Shot 2026-05-09 at 3.20.35 PM.png",
+          "restaurantpics/lan/Screen Shot 2026-05-09 at 3.20.38 PM.png",
+        ]
+      },
+      {
+        name: "Nassau Sushi",
+        cuisine: "Sushi · Korean",
+        address: "179 Nassau St",
+        rating: "3.7 ★",
+        hours: "Mon Closed · Tue–Fri 11:30am–2:30pm, 4–9pm\nSat 11:30am–9pm · Sun 12–8:30pm",
+        review: "我其实挺喜欢这家餐厅的。第一次去的时候不太适应它的氛围——地上为什么要铺地毯?感觉像在别人家客厅。但慢慢地我越来越喜欢这里了。我去得很勤,因为他们的炖菜不会太油腻。乌冬面建议跳过,很普通。其他方面,韩餐和日料的选择都挺多的。",
+        maps: "https://maps.google.com/?q=Nassau+Sushi+179+Nassau+St+Princeton+NJ",
+        lat: 40.35066, lng: -74.65576,
+        photos: [
+          "restaurantpics/nassausushi/Screen Shot 2026-05-09 at 3.21.26 PM.png",
+          "restaurantpics/nassausushi/Screen Shot 2026-05-09 at 3.21.29 PM.png",
+          "restaurantpics/nassausushi/Screen Shot 2026-05-09 at 3.21.37 PM.png",
+          "restaurantpics/nassausushi/Screen Shot 2026-05-09 at 3.21.40 PM.png",
+        ]
+      },
+      {
+        name: "Thai Village",
+        cuisine: "Thai · BYOB",
+        address: "235 Nassau St Suite C",
+        rating: "3.2 ★",
+        hours: "Mon–Tue 11am–9:30pm · Wed Closed\nThu–Fri 11am–9:30pm · Sat–Sun 12–9:30pm",
+        review: "中规中矩。能吃饱,想吃泰式风味的时候去也还行。",
+        maps: "https://maps.google.com/?q=Thai+Village+Princeton+NJ",
+        lat: 40.35169, lng: -74.65217,
+        photos: [
+          "restaurantpics/thaivillage/Screen Shot 2026-05-09 at 3.21.48 PM.png",
+        ]
+      },
+      {
+        name: "Purinsu Ramen",
+        cuisine: "Japanese · Ramen",
+        address: "32 Witherspoon St",
+        rating: "4.3 ★",
+        hours: "Daily 11am–9:30pm",
+        review: "可能是普林斯顿最差的拉面店了。价格贵,分量还小。勉强能吃吧,毕竟我对食物不算挑剔。有一次去,店里放着节奏很强的音乐,感觉像在跟时间赛跑,赶着把面吃完。可能是普林斯顿最差的拉面店了。价格贵,分量还小。勉强能吃吧,毕竟我对食物不算挑剔。有一次去,店里放着节奏很强的音乐,感觉像在跟时间赛跑,赶着把面吃完。不过这家居然是我朋友心目中的最爱拉面,我真觉得他/她脑子有问题。",
+        maps: "https://maps.google.com/?q=Purinsu+Ramen+32+Witherspoon+St+Princeton+NJ",
+        lat: 40.35079, lng: -74.66023,
+        photos: [
+          "restaurantpics/purinsu/Screen Shot 2026-05-09 at 3.19.34 PM.png",
+        ]
+      },
+    ];
+
+    const map = L.map('map', {
+      center: [40.3510, -74.6566],
+      zoom: 16,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap contributors © CARTO',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const overlay = document.getElementById('overlay');
+    const modal = document.getElementById('modal');
+    let activePin = null;
+
+    function buildModalHTML(r) {
+      const multi = r.photos.length > 1;
+      const navBtns = multi
+        ? `<button class="gallery-nav prev" onclick="prevPhoto(this)">&#8249;</button>
+           <button class="gallery-nav next" onclick="nextPhoto(this)">&#8250;</button>`
+        : '';
+      const dots = multi
+        ? `<div class="gallery-dots">${r.photos.map((_, i) =>
+            `<div class="gdot${i===0?' active':''}" onclick="goPhoto(this,${i})"></div>`
+          ).join('')}</div>`
+        : '';
+      const imgs = r.photos.map((src, i) =>
+        `<img src="${src}" class="${i===0?'active':''}" />`
+      ).join('');
+
+      return `
+        <button id="close-btn" onclick="closeModal()">✕</button>
+        <div class="popup-gallery" data-idx="0">
+          ${imgs}${navBtns}${dots}
+        </div>
+        <div class="popup-body">
+          <div class="popup-name">${r.name}</div>
+
+          <div class="popup-meta">
+            <span>📍 ${r.address}</span>
+          </div>
+          <hr class="pdivider">
+          <div class="popup-label">书华的评论</div>
+          <div class="popup-review">${r.review}</div>
+          <a class="popup-maps" href="${r.maps}" target="_blank">View on Google Maps →</a>
+        </div>`;
+    }
+
+    function openModal(r, pinEl) {
+      if (activePin) activePin.classList.remove('active');
+      activePin = pinEl;
+      pinEl.classList.add('active');
+      modal.innerHTML = buildModalHTML(r);
+      overlay.classList.add('visible');
+    }
+
+    function closeModal() {
+      overlay.classList.remove('visible');
+      if (activePin) { activePin.classList.remove('active'); activePin = null; }
+    }
+
+    // Click backdrop to close
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) closeModal();
+    });
+
+    // Escape key to close
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    function getGallery(btn) { return btn.closest('.popup-gallery'); }
+    function getImgs(g) { return Array.from(g.querySelectorAll('img')); }
+    function getDots(g) { return Array.from(g.querySelectorAll('.gdot')); }
+
+    function goPhoto(dotEl, idx) { setPhoto(dotEl.closest('.popup-gallery'), idx); }
+
+    function setPhoto(gallery, idx) {
+      const imgs = getImgs(gallery), dots = getDots(gallery);
+      const cur = parseInt(gallery.dataset.idx);
+      imgs[cur].classList.remove('active');
+      if (dots[cur]) dots[cur].classList.remove('active');
+      gallery.dataset.idx = idx;
+      imgs[idx].classList.add('active');
+      if (dots[idx]) dots[idx].classList.add('active');
+    }
+
+    function prevPhoto(btn) {
+      const g = getGallery(btn), imgs = getImgs(g), cur = parseInt(g.dataset.idx);
+      setPhoto(g, (cur - 1 + imgs.length) % imgs.length);
+    }
+
+    function nextPhoto(btn) {
+      const g = getGallery(btn), imgs = getImgs(g), cur = parseInt(g.dataset.idx);
+      setPhoto(g, (cur + 1) % imgs.length);
+    }
+
+    restaurants.forEach(r => {
+      const icon = L.divIcon({
+        className: 'pin-wrapper',
+        html: `<div class="pin"></div><div class="pin-label">${r.name}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+      });
+
+      const marker = L.marker([r.lat, r.lng], { icon }).addTo(map);
+
+      marker.on('click', function() {
+        const pinEl = marker.getElement().querySelector('.pin');
+        openModal(r, pinEl);
+      });
+    });
+
+    function openRandom() {
+      const r = restaurants[Math.floor(Math.random() * restaurants.length)];
+      openModal(r, document.createElement('div'));
+    }
+
+    window.prevPhoto = prevPhoto;
+    window.nextPhoto = nextPhoto;
+    window.goPhoto = goPhoto;
+    window.closeModal = closeModal;
+    window.openRandom = openRandom;
+  </script>
+</body>
+</html>
