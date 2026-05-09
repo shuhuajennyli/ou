@@ -432,10 +432,26 @@
           "restaurantpics/purinsu/Screen Shot 2026-05-09 at 3.19.34 PM.png",
         ]
       },
+      {
+        name: "Noodle House",
+        cuisine: "Chinese · Noodles",
+        address: "80 Nassau St",
+        rating: "N/A",
+        hours: "N/A",
+        review: "算不上精致餐饮,但是个吃起来很有家常感的地方。拉面就不用点了,在家煮包泡面估计也差不多,但他们的越南河粉还挺不错的。菜单很丰富,从台湾卤肉饭到越南法棍 banh mi 都有。他们家的五香牛肉饭让我想起妈妈做的卤牛腱,味道很亲切。作为学生党常去的小馆子,真的不错。算不上精致餐饮,但是个吃起来很有家常感的地方。拉面就不用点了,在家煮包泡面估计也差不多,但他们的越南河粉还挺不错的。菜单很丰富,从台湾卤肉饭到越南法棍 banh mi 都有。他们家的五香牛肉饭让我想起妈妈做的卤牛腱,味道很亲切。作为学生党常去的小馆子,真的不错。",
+        maps: "https://maps.google.com/?q=Noodle+House+80+Nassau+St+Princeton+NJ",
+        lat: 40.34967, lng: -74.66029,
+        photos: [
+          "restaurantpics/noodlehouse/Screen Shot 2026-05-09 at 4.40.23 PM.png",
+          "restaurantpics/noodlehouse/Screen Shot 2026-05-09 at 4.40.26 PM.png",
+          "restaurantpics/noodlehouse/Screen Shot 2026-05-09 at 4.40.29 PM.png",
+          "restaurantpics/noodlehouse/Screen Shot 2026-05-09 at 4.40.36 PM.png",
+        ]
+      },
     ];
 
     const map = L.map('map', {
-      center: [40.3510, -74.6566],
+      center: [40.3508, -74.6566],
       zoom: 16,
       zoomControl: false,
       dragging: false,
@@ -553,7 +569,12 @@
       });
     });
 
+    const randomAudio = new Audio('random.mp3');
+    randomAudio.playbackRate = 2;
+
     function openRandom() {
+      randomAudio.currentTime = 0;
+      randomAudio.play();
       const r = restaurants[Math.floor(Math.random() * restaurants.length)];
       openModal(r, document.createElement('div'));
     }
